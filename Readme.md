@@ -1,1 +1,1 @@
-# Its a complete backend playground for explore all features
+# Its a complete backend playground to explore all features
