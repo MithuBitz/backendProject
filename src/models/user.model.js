@@ -37,7 +37,7 @@ const userSchema = new Schema(
     coverImage: {
       type: String,
     },
-    requestToken: {
+    refreshToken: {
       type: String,
     },
     watchHistory: [
@@ -57,7 +57,7 @@ userSchema.pre("save", async function (next) {
   //if password is not modified by user then no need to use bcrypt just return next()
   if (!this.isModified("password")) return next();
 
-  this.password = bcrypt.hash(this.password, 10);
+  this.password = await bcrypt.hash(this.password, 10);
   next();
 });
 
