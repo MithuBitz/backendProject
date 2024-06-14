@@ -14,7 +14,8 @@ export const uploadInCludinary = async (localFilePath) => {
     const response = await cloudinary.uploader.upload(localFilePath, {
       resource_type: "auto", //automatically detect the file type
     });
-    console.log("File is upload in cloudinary ", response.url);
+    // console.log("File is upload in cloudinary ", response.url);
+    fs.unlinkSync(localFilePath)
     return response;
   } catch (error) {
     //unlink or remove the local file path

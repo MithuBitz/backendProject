@@ -19,21 +19,33 @@ const registerUser = asyncHandler(async (req, res) => {
   }
 
   //check the user is already register with the username and email
-  const existingUser = User.findOne({
+  const existingUser = await User.findOne({
     $or: [{ username }, { email }],
   });
   if (existingUser) {
     throw new apiError(409, "username and email already exist");
   }
 
+  // console.log(req.files.avatar);
   //check for images, check for avatar
   const avatarLocalPath = req.files?.avatar[0]?.path; //get it from multer middleware
-  const coverImageLocalPath = req.files?.coverImage[0]?.path;
+
+  //Check for coverImage otherwise it is undifined to store in db
+  // const coverImageLocalPath = req.files?.coverImage[0]?.path;
+  let coverImageLocalPath;
+  if (
+    req.files &&
+    Array.isArray(req.files.coverImage) &&
+    req.files.coverImage.length > 0
+  ) {
+    coverImageLocalPath = req.files.coverImage[0].path;
+  }
 
   //upload the images and avatar into cloudinary
   if (!avatarLocalPath) {
     throw new apiError(400, "avatar must required");
   }
+
   const avatar = await uploadInCludinary(avatarLocalPath);
   const coverImage = await uploadInCludinary(coverImageLocalPath);
 
