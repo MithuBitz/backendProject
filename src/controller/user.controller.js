@@ -4,6 +4,28 @@ import { User } from "../models/user.model.js";
 import { uploadInCludinary } from "../utils/cloudinary.js";
 import { apiResponse } from "../utils/apiResponse.js";
 
+//Specific async method for generating access and refresh token with help of userId as a parameter
+const generateAccessAndRefreshToken = async (userId) => {
+  try {
+    //in try block
+    //find the user from db with help of the userId
+    const user = await User.findById(userId);
+    //from the user schema method generateAccessToken and hold it in a variable
+    const accessToken = user.generateAccessToke();
+    //from the user schema method generateRefreshToken and hold it in a variable
+    const refreshToken = user.generateRefreshToken();
+    //we need to store refreshToken in db
+    user.refreshToken = refreshToken;
+    //sava after store but false the validateBeforeSave so that need not to validate all field onto the db here
+    await user.save({ validateBeforeSave: false });
+
+    // return the accessToken and refreshToken for futher use
+    return { accessToken, refreshToken };
+  } catch (error) {
+    throw new apiError(502, "Something went wrong in generating tokens");
+  }
+};
+
 const registerUser = asyncHandler(async (req, res) => {
   //Steps or logic or algorithm for register a user
 
@@ -77,6 +99,60 @@ const registerUser = asyncHandler(async (req, res) => {
   return res
     .status(201)
     .json(new apiResponse(200, createdUser, "User created successfully"));
+});
+
+const loginUser = asyncHandler(async (req, res) => {
+  //Get the required field like email or username and password from user to log in
+  const { username, email, password } = req.body;
+  // validate those fields
+  if (!username || !email) {
+    throw new apiError(400, "Email or password is required");
+  }
+  //from the basis of username or email find the user
+  const user = await User.findOne({
+    $or: [{ username }, { password }],
+  });
+  //if user is not found then throw an error
+  if (!user) {
+    throw new apiError(404, "User not found");
+  }
+  //if user is found then check for password
+  const isPasswordValid = await user.isPasswordCorrect(password);
+  //if password is not match then throw an error
+  if (!isPasswordValid) {
+    throw new apiError(404, "Incorrect credentials");
+  }
+  //if password is match
+  //generate access and refresh token for that user
+  const { accessToken, refreshToken } = await generateAccessAndRefreshToken(
+    user._id
+  );
+
+  const loggedInUser = await User.findById(user._id).select(
+    "-password -refreshToken"
+  );
+
+  const options = {
+    secure: true,
+    httpOnly: true,
+  };
+
+  //send cookie to the user
+  return res
+    .status(200)
+    .cookie("accessToken", accessToken, options)
+    .cookie("refreshToken", refreshToken, options)
+    .json(
+      new apiResponse(
+        200,
+        {
+          user: loggedInUser,
+          accessToken, //It is good practice to send token to user or frontend so that user can save it indivisually
+          refreshToken,
+        },
+        "User loggedIn successfully"
+      )
+    );
 });
 
 export { registerUser };
