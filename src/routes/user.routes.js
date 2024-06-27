@@ -1,7 +1,12 @@
 import { Router } from "express";
 
-import { registerUser } from "../controller/user.controller.js";
+import {
+  loginUser,
+  logoutUser,
+  registerUser,
+} from "../controller/user.controller.js";
 import { upload } from "../middleware/multer.middleware.js";
+import { varifyJWT } from "../middleware/auth.middleware.js";
 
 const router = Router();
 
@@ -20,5 +25,11 @@ router.route("/register").post(
   ]),
   registerUser
 );
+
+//Route for login the user with help of loginUser controller with a post method
+router.route("/login").post(loginUser);
+
+//route for logout the user with help of logout controller with a post method and also add a middleware varifyJWT befor the controller
+router.route("/logout").post(varifyJWT, logoutUser);
 
 export default router;

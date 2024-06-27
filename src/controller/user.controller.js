@@ -132,6 +132,7 @@ const loginUser = asyncHandler(async (req, res) => {
     "-password -refreshToken"
   );
 
+  //options are used in cookie
   const options = {
     secure: true,
     httpOnly: true,
@@ -155,4 +156,33 @@ const loginUser = asyncHandler(async (req, res) => {
     );
 });
 
-export { registerUser };
+const logoutUser = asyncHandler(async (req, res) => {
+  //find the user with help of user id from access token
+  await User.findByIdAndUpdate(
+    req.user?._id,
+    {
+      //update the user with refreshToken set to be undefined
+      $set: {
+        refreshToken: undefined,
+      },
+    },
+    {
+      new: true,
+    }
+  );
+
+  //set option for clear cookie
+  const options = {
+    secure: true,
+    httpOnly: true,
+  };
+
+  //return the response and clear the cookies
+  return res
+    .status(200)
+    .clearCookie("accessToken", options)
+    .clearCookie("refreshToken", options)
+    .json(new apiResponse(200, {}, "User logged out"));
+});
+
+export { registerUser, loginUser, logoutUser };
