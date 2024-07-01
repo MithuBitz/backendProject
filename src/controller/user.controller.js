@@ -104,14 +104,16 @@ const registerUser = asyncHandler(async (req, res) => {
 const loginUser = asyncHandler(async (req, res) => {
   //Get the required field like email or username and password from user to log in
   const { username, email, password } = req.body;
+  // console.log(req.body);
   // validate those fields
   if (!(username || email)) {
     throw new apiError(400, "Email or password is required");
   }
   //from the basis of username or email find the user
   const user = await User.findOne({
-    $or: [{ username }, { password }],
+    $or: [{ username }, { email }], //fixed issue with email not password
   });
+  console.log(user);
   //if user is not found then throw an error
   if (!user) {
     throw new apiError(404, "User not found");
