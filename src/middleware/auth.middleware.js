@@ -1,12 +1,13 @@
 import jwt from "jsonwebtoken";
 
-import { apiError } from "../utils/apiError";
-import { asyncHandler } from "../utils/asyncHandler";
-import { User } from "../models/user.model";
+import { apiError } from "../utils/apiError.js";
+import { asyncHandler } from "../utils/asyncHandler.js";
+import { User } from "../models/user.model.js";
 
 //Create a function with help of asyncHandler
 //we create a middleware so we need req, res and also next to go to the next
-export const varifyJWT = asyncHandler(async (req, res, next) => {
+//res field is not required so we use _
+export const varifyJWT = asyncHandler(async (req, _, next) => {
   try {
     //Get the accessToken from the req cookies or if it was no cookie then
     const token =

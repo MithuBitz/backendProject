@@ -105,7 +105,7 @@ const loginUser = asyncHandler(async (req, res) => {
   //Get the required field like email or username and password from user to log in
   const { username, email, password } = req.body;
   // validate those fields
-  if (!username || !email) {
+  if (!(username || email)) {
     throw new apiError(400, "Email or password is required");
   }
   //from the basis of username or email find the user
