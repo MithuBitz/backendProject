@@ -3,6 +3,7 @@ import { apiError } from "../utils/apiError.js";
 import { User } from "../models/user.model.js";
 import { uploadInCludinary } from "../utils/cloudinary.js";
 import { apiResponse } from "../utils/apiResponse.js";
+import jwt from "jsonwebtoken";
 
 //Specific async method for generating access and refresh token with help of userId as a parameter
 const generateAccessAndRefreshToken = async (userId) => {
@@ -187,4 +188,61 @@ const logoutUser = asyncHandler(async (req, res) => {
     .json(new apiResponse(200, {}, "User logged out"));
 });
 
-export { registerUser, loginUser, logoutUser };
+//We need a controller for accessToken when accessToken expire we need to regenerate it
+const refreshAccessToken = asyncHandler(async (req, res) => {
+  //get the refreshToken from cookie or from the req.body
+  const incomeingRefreshToken =
+    req.cookie?.refreshToken || req.body.refreshToken;
+  //if not get the token -> throw an error
+  if (!incomeingRefreshToken) {
+    throw new apiError(401, "Unauthorized request");
+  }
+  try {
+    //we need to decode the token with help of jwt so that we get the acctual token not the encrypted one
+    const decoded = jwt.verify(
+      incomeingRefreshToken,
+      process.env.REFRESH_TOKEN_SECRET
+    );
+    //from the decoded refreshToken  we get the _id and with help of id we get the user
+    const user = await User.findById(decoded?._id);
+    //if no user found -> throw an error
+    if (!user) {
+      throw new apiError(404, "User not found");
+    }
+    //To know expiry of the refreshToken we need to compare the user refresh token with the geting token from req
+    //if both are not same then -> throw an error
+    if (incomeingRefreshToken !== user?.refreshToken) {
+      throw new apiError(401, "Token is expired");
+    }
+
+    //generate new tokens
+    const { accessToken, newRefreshToken } =
+      await generateAccessAndRefreshToken(user?._id);
+
+    //create a option for passing into cookie
+    const options = {
+      secure: true,
+      httpOnly: true,
+    };
+    //generate a new token with help of a function and extract the newly created token
+    //return the response with help of status and cookie for the token and a apiReponse in json
+    return res
+      .status(201)
+      .cookie("accessToken", accessToken, options)
+      .cookie("refreshToken", newRefreshToken, options)
+      .json(
+        new apiResponse(
+          200,
+          {
+            accessToken, //It is good practice to send token to user or frontend so that user can save it indivisually
+            refreshToken: newRefreshToken,
+          },
+          "Access token Refreshed"
+        )
+      );
+  } catch (error) {
+    throw new apiError(401, error?.message || "Invalid refresh Token");
+  }
+});
+
+export { registerUser, loginUser, logoutUser, refreshAccessToken };
