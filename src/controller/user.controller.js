@@ -1,4 +1,4 @@
-import { asyncHandler } from "../utils/asyncHandler.js";
+import { asyncHandler, asyncHandlerTC } from "../utils/asyncHandler.js";
 import { apiError } from "../utils/apiError.js";
 import { User } from "../models/user.model.js";
 import { uploadInCludinary } from "../utils/cloudinary.js";
@@ -245,4 +245,138 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
   }
 });
 
-export { registerUser, loginUser, logoutUser, refreshAccessToken };
+//controller for change in password
+const changeCurrentPassword = asyncHandler(async (req, res) => {
+  //get the new and old password from req.body
+  const { oldPassword, newPassword } = req.body;
+  //req.user give us the user from the auth middleware from that user _id
+  //find the user
+  const user = await User.findById(req.user?._id);
+  //from the user call the isPasswordCorrect method and compare with the old password
+  const isPasswordCorrect = await user.isPasswordCorrect(oldPassword);
+  //if it is not correct then throw -> error
+  if (!isPasswordCorrect) {
+    throw new apiError(401, "Invalid password");
+  }
+  //if correct then save the new password into the password filed of database user
+  user.password = newPassword;
+  //before save the model automatically hash the new password and also set validate Befor save to false so that all field need not to be update
+  await user.save({ validateBeforeSave: false });
+  //return the response that the password is changed
+  return res
+    .status(200)
+    .json(new apiResponse(200, {}, "Password changed successfully"));
+});
+
+//Get the current user and send it to the frontend
+const getCurrentUser = asyncHandler(async (req, res) => {
+  //just return the user geting from the req.user
+  return res
+    .status(200)
+    .json(new apiResponse(201, req.user, "Current user fetched successfully"));
+});
+
+//update user account for specific fields like fullName, email, etc.
+const updateUserAccount = asyncHandler(async (req, res) => {
+  //get the nessecerry field from the req.body
+  const { fullname, email } = req.body;
+  //chech for the field for empty
+  if (!fullname || !email) {
+    throw new apiError(400, "All fields are required");
+  }
+  //call the findByIdAndUpdate method from the req.user.id and update the neccessery field
+  const user = await User.findByIdAndUpdate(
+    req.user?._id,
+    {
+      $set: {
+        fullname,
+        email,
+      },
+    },
+    { new: true } //it is used to return the data after the update
+  ).select("-password"); //select the password to filter it from the user
+
+  //return the user in the response
+  return res
+    .status(200)
+    .json(new apiResponse(200, user, "Account updated successfully"));
+});
+
+//Update the user avatar controller
+const updateUserAvatar = asyncHandler(async (req, res) => {
+  //get the avatar from req.file
+  const avatarLocalPath = req.file?.avatar;
+  //if the avatar is not get then throw -> error
+  if (avatarLocalPath) {
+    throw new apiError(404, "avatar local path not found");
+  }
+  //store that avatar file into cloudinary and get the url
+  const avatar = await uploadInCludinary(avatarLocalPath);
+  //if no url then throw -> error
+  if (!avatar?.url) {
+    throw new apiError(400, "avatar failed to upload into cloudinary");
+  }
+  //get the user with id and update and set the avatar with the cloudinary url
+  const user = await User.findByIdAndUpdate(
+    req.user?._id,
+    {
+      $set: {
+        avatar: avatar?.url,
+      },
+    },
+    { new: true }
+  ).select("-password");
+  //return the response with the new user
+  return res
+    .status(200)
+    .json(new apiResponse(200, user, "Avatar successfully updated"));
+});
+
+const updateUserCoverImage = asyncHandler(async (req, res) => {
+  const coverLocalPath = req.file?.coverImage;
+  if (!coverLocalPath) {
+    throw new apiError(400, "CoverImage path is mission");
+  }
+  const coverImage = await uploadInCludinary(coverLocalPath);
+
+  if (!coverImage?.url) {
+    throw new apiError(400, "Error in uploading coverImage");
+  }
+
+  const user = await User.findByIdAndUpdate(
+    req.user?._id,
+    {
+      $set: {
+        coverImage: coverImage?.url,
+      },
+    },
+    { new: true }
+  ).select("-password");
+
+  return res
+    .status(200)
+    .json(new apiResponse(200, user, "CoverImage update successfully"));
+});
+
+//Function to get User channel profile
+//first get the username from the req params
+//if no username then throw -> erro
+
+//use aggrigation pipeline for the User
+//first stage match the username to filter the users by the username
+//second stage lookup to join from subscriptions, localfield is _id, foreign field is channel and add as subscriber
+//thired stage lookup to join from subscriptions, localfield is _id, foreign field is subscriber and add as subscribeTo
+//addfields like subscriberCount, channelSubscriberToCount and isSubscribed
+//select nesseccary field to return useing project and select the desired fields
+
+export {
+  registerUser,
+  loginUser,
+  logoutUser,
+  refreshAccessToken,
+  changeCurrentPassword,
+  getCurrentUser,
+  updateUserAccount,
+  updateUserAvatar,
+  updateUserCoverImage,
+};
