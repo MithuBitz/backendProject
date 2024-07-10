@@ -359,15 +359,73 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
 });
 
 //Function to get User channel profile
-//first get the username from the req params
-//if no username then throw -> erro
+const getUserChannelProfile = asyncHandler(async (req, res) => {
+  //first get the username from the req params
+  const { username } = req.params;
+  //if no username then throw -> erro
+  if (!username?.trim()) {
+    throw new apiError(400, "username is missing");
+  }
 
-//use aggrigation pipeline for the User
-//first stage match the username to filter the users by the username
-//second stage lookup to join from subscriptions, localfield is _id, foreign field is channel and add as subscriber
-//thired stage lookup to join from subscriptions, localfield is _id, foreign field is subscriber and add as subscribeTo
-//addfields like subscriberCount, channelSubscriberToCount and isSubscribed
-//select nesseccary field to return useing project and select the desired fields
+  //use aggrigation pipeline for the User
+  const channel = await User.aggregate([
+    //first stage match the username to filter the users by the username
+    {
+      $match: { username: username?.toLowerCase() },
+    },
+    //second stage lookup to join from subscriptions, localfield is _id, foreign field is channel and add as subscriber
+    {
+      $lookup: {
+        from: "subscriptions",
+        localField: "_id",
+        foreignField: "channel",
+        as: "subscribers",
+      },
+    },
+    //thired stage lookup to join from subscriptions, localfield is _id, foreign field is subscriber and add as subscribeTo
+    {
+      $lookup: {
+        from: "subscriptions",
+        localField: "_id",
+        foreignField: "channel",
+        as: "subscribeTo",
+      },
+    },
+    //addfields like subscriberCount, channelSubscriberToCount and isSubscribed
+    {
+      $addFields: {
+        subscriberCount: {
+          $size: "$subscribers",
+        },
+        channelSubscriberToCount: {
+          $size: "subscribeTo",
+        },
+        isSubscribed: {
+          $cond: {
+            if: { $in: [req.user?._id, "$subscribers.subscriber"] },
+            then: true,
+            else: false,
+          },
+        },
+      },
+    },
+    //select nesseccary field to return useing project and select the desired fields
+    {
+      $project: {
+        username: 1,
+        email: 1,
+        fullname: 1,
+        avatar: 1,
+        coverImage: 1,
+        subscriberCount: 1,
+        channelSubscriberToCount: 1,
+        isSubscribed: 1,
+      },
+    },
+  ]);
+
+  
+});
 
 export {
   registerUser,
