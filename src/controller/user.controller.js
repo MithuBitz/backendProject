@@ -4,6 +4,7 @@ import { User } from "../models/user.model.js";
 import { uploadInCludinary } from "../utils/cloudinary.js";
 import { apiResponse } from "../utils/apiResponse.js";
 import jwt from "jsonwebtoken";
+import mongoose from "mongoose";
 
 //Specific async method for generating access and refresh token with help of userId as a parameter
 const generateAccessAndRefreshToken = async (userId) => {
@@ -424,7 +425,84 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
     },
   ]);
 
-  
+  //Its a good practice to log the channel to know what datatpes and data will return by pipeline
+  // console.log(channel)
+
+  //if the return channel array not have any data then
+  if (!channel?.length) {
+    throw new apiError(400, "Channel does not exists");
+  }
+
+  //return the res with the channel data
+  return res
+    .status(200)
+    .json(new apiResponse(200, channel[0], "User fetched successfully")); //channel[0] return only first object of channel
+});
+
+//Fuction to get the watchHistory
+const getUserWatchHistory = asyncHandler(async (req, res) => {
+  //get the user and filter the user by useing aggrigation pipeline
+
+  const user = await User.aggregate([
+    //first pipeline -> get the specific user by useing match the _id
+    //Imp point in pipeline we cannot get the _id in string to do that we use mongoose .Type.ObjectId(<id fetch from the req.user>)
+    {
+      $match: {
+        _id: new mongoose.Types.ObjectId(req.user?._id),
+      },
+    },
+    {
+      //2nd pipeline -> lookup from videos and localField-> watchHistory for..Fie -> _id as watchHistory
+      $lookup: {
+        from: "videos",
+        localField: "watchHistory",
+        foreignField: "_id",
+        as: "watchHistory",
+        //use nested pipeline to get the owner field from the videos
+        pipeline: [
+          //nested pipeline -> use lookup from user and localField-> owner for..Fie -> _id as owner
+          {
+            $lookup: {
+              from: "users",
+              localField: "owner",
+              foreignField: "_id",
+              as: "owner",
+              //use nested pipeline to filter the owner with required fields
+              //nested pipeline -> use project and select only fullname, username, avatar, etc otherwise owner has all fields of user which is unnessary
+              pipeline: [
+                {
+                  $project: {
+                    fullname: 1,
+                    username: 1,
+                    avatar: 1,
+                  },
+                },
+              ],
+            },
+          },
+          //use pipeline addFields to add as owner and filter out the first document of owner geting from last pipeline
+          {
+            $addFields: {
+              owner: {
+                $first: "$owner",
+              },
+            },
+          },
+        ],
+      },
+    },
+  ]);
+
+  //return the watchHistory from the first user return by the pipeline
+  return res
+    .status(200)
+    .json(
+      new apiResponse(
+        200,
+        user[0].watchHistory,
+        "Watch history fetched successfully"
+      )
+    );
 });
 
 export {
@@ -437,4 +515,6 @@ export {
   updateUserAccount,
   updateUserAvatar,
   updateUserCoverImage,
+  getUserChannelProfile,
+  getUserWatchHistory,
 };
