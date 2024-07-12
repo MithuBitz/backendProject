@@ -306,13 +306,16 @@ const updateUserAccount = asyncHandler(async (req, res) => {
 //Update the user avatar controller
 const updateUserAvatar = asyncHandler(async (req, res) => {
   //get the avatar from req.file
-  const avatarLocalPath = req.file?.avatar;
+  // console.log(req.file?.path);
+  const avatarLocalPath = req.file?.path;
   //if the avatar is not get then throw -> error
-  if (avatarLocalPath) {
+  if (!avatarLocalPath) {
     throw new apiError(404, "avatar local path not found");
   }
+  // console.log(avatarLocalPath);
   //store that avatar file into cloudinary and get the url
   const avatar = await uploadInCludinary(avatarLocalPath);
+  // console.log(avatar);
   //if no url then throw -> error
   if (!avatar?.url) {
     throw new apiError(400, "avatar failed to upload into cloudinary");
@@ -334,7 +337,7 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
 });
 
 const updateUserCoverImage = asyncHandler(async (req, res) => {
-  const coverLocalPath = req.file?.coverImage;
+  const coverLocalPath = req.file?.path;
   if (!coverLocalPath) {
     throw new apiError(400, "CoverImage path is mission");
   }
