@@ -166,8 +166,11 @@ const logoutUser = asyncHandler(async (req, res) => {
     req.user?._id,
     {
       //update the user with refreshToken set to be undefined
-      $set: {
-        refreshToken: undefined,
+      // $set: {
+      //   refreshToken: undefined,
+      // },
+      $unset: {
+        refreshToken: 1, // this will remove the field from the document
       },
     },
     {
@@ -402,7 +405,7 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
           $size: "$subscribers",
         },
         channelSubscriberToCount: {
-          $size: "subscribeTo",
+          $size: "$subscribeTo",
         },
         isSubscribed: {
           $cond: {
