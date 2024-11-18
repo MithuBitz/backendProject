@@ -194,6 +194,7 @@ const logoutUser = asyncHandler(async (req, res) => {
 
 //We need a controller for accessToken when accessToken expire we need to regenerate it
 const refreshAccessToken = asyncHandler(async (req, res) => {
+  console.log(req.cookie);
   //get the refreshToken from cookie or from the req.body
   const incomeingRefreshToken =
     req.cookie?.refreshToken || req.body.refreshToken;
