@@ -221,3 +221,75 @@
 - Now we need to create a refresh token inside the user model like `userSchema.methods.generateRefreshToken = function () {};`
 - Inside the function we need create long lived refresh token. First we need to import `jsonwebtoken` inside the function.
 - Then we need to use `jwt.sign({ _id: this._id }, process.env.JWT_REFRESH_TOKEN_SECRET, { expiresIn: process.env.JWT_REFRESH_TOKEN_EXPIRY })` to create the long lived refresh token.
+
+## Step 28:
+
+- File handleing with cloudinary is the best practice.
+- At first in express we dont have any file handleing feature.
+- Second to read the cookies from the client we need to install `cookie-parser` package by using `npm i cookie-parser`.
+- And also to read the file from the client we need to install `multer` package by using `npm i multer`.
+- To use multer first create a `multer.middleware.js` file inside the `middleware` folder.
+- Inside the `multer.middleware.js` file we need to import `multer` from the `multer` package.
+- Now we need to create a storage for multer where we can set the `destination` with help of a function with `req`, `file` and `cb` parameters. Then we need to call the `cb` (callback function) with `null` and `folder path` as the arguments.
+- And also we need to create a `filename` with help of a function with `req`, `file` and `cb` parameters. Then we can set a `uniqueSuffix` or say `random name` for the file like `const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);` and then we need to call the `cb` (callback function) with `null`, `file.fieldname` and `uniqueSuffix` as the arguments like `cb(null, file.fieldname + "-" + uniqueSuffix)` or just we can call the `cb` with `null` and `file.originalname` as the arguments.
+- Finally we need to export the `multer` like `export const upload = multer({ storage });` and then we can use this `upload` anywhere in the app
+
+## Step 29:
+
+- To upload the file to cloudinary we need to install `cloudinary` package by using `npm i cloudinary`.
+- Now we need to create a `clodinary.js` file inside the `utils` folder.
+- Then first we need to create some variable like `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` and `CLOUDINARY_FOLDER_NAME` in the `.env` file.
+- Now first we need to import `cloudinary` from the `cloudinary` package inside the `cloudinary.js` file like `import { v2 as cloudinary } from "cloudinary";`.
+- Then we need to config the cloudinary with help of `cloudinary.config()` function. And also we need to add the `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` and `CLOUDINARY_FOLDER_NAME` in the `cloudinary.config()` function.
+- Now we need to create a async method like `uploadFileToCloudinary` with `localFilePath` parameter.
+- Now first import the `fs` from the `fs` package inside the `cloudinary.js` file like `import fs from "fs";`.
+- And then inside the `uploadFileToCloudinary` method we need to use `fs.unlinkSync(localFilePath)` to remove the local file path inside the catch block of the method.
+- Inside the try block of the method we need to apply the logic to upload the local file into the cloudinary. For doing so we need to use `cloudinary.uploader.upload(localFilePath, { resource_type: "auto" })` to upload the file. This takes time so we need to use await and also hold the response in a variable like `const response = await cloudinary.uploader.upload(localFilePath, { resource_type: "auto" });`. And then for testing purpose we need to use `console.log("File is upload in cloudinary ", response.url);` to print the cloudinary url.
+- Also after the file is upload into cloudinary if we need to delete it from the local folder we need to use `fs.unlinkSync(localFilePath)` to remove the local file path.
+- And finally return the response so that we can use it in the route.
+- export the `uploadFileToCloudinary` method.
+
+## Step 30:
+
+- Now we need to create a controller for the user model in `user.controller.js` file inside the `controller` folder.
+- Then we need to create a `registerUser` function to register a user. And in the function we use `asyncHandler` with `req`, `res` parameters.
+- And export the `registerUser` function. After that we also need a route for the user model in `user.routes.js` file inside the `routes` folder.
+- In the `user.routes.js` file we need to import the `registerUser` function from the `user.controller.js` file. and also import the `Router` from the `express` package.
+- And also we need to create a router object using `const router = Router();`.
+- Then we need to create a route to register a user using `router.route("/register").post(registerUser)` and export the router object.
+- Now we need to import the `upload` middleware from the `multer.middleware.js` file inside the `user.routes.js` file.
+- After that inside the `post()` method of the route we need to use `upload.fields()` to upload the file.Here we need to upload two image one is `coverImage` and another is `avatar`.So to upload two image we need to use `upload.fields([{"name": "coverImage", "maxCount": 1}, {"name": "avatar", "maxCount": 1}])`.
+- Afer that we need to set this user route in `app.js` file by using `app.use("/api/v1/user", userRouter);`
+
+## Step 31:
+
+- Now we need to setup the `registerUser` function in the `user.controller.js` file.
+- First we need to extract the `fullname`, `username`, `email`, `password` from the `req.body` object.
+- Then we need some validation for the `fullname`, `username`, `email`, `password`. ( Here we can also use some third party validator like zod, etc)
+- Now with help of `some()` method we can validate the `fullname`, `username`, `email`, `password` for empty string like `["fullname", "username", "email", "password"].some((field) => field.trim() === "")`.
+- And if it is empty then throw an error useing `apiError` class.
+- Now we need to import the `User` model from the `user.model.js` file inside the `user.controller.js` file.
+- Then we need to check that the user with then respected `email` or `username` already exist or not. For doing so we need to use `User.findOne({ $or: [{ email: email }, { username: username }] })` to find the user and hold it ina variable called `existedUser`.
+- And if the user already exist then throw an error useing `apiError` class.
+- Now we need to extract the avatar image path like `req.files.avatar[0].path` and hold it in a variable called `avatarLocalPath`
+- Now we need to extract the cover image path like `req.files.coverImage[0].path` and hold it in a variable called `coverLocalPath`
+- Then if the avatarLocalPath is empty then throw an error useing `apiError` class.
+- Now to upload the image in cloudinary first we need to import the `uploadInCludinary` function from the `cloudinary.js` file inside the `user.controller.js` file.
+- Then we need to call the `uploadInCludinary` function with help of `avatarLocalPath` and `coverLocalPath` parameters to upload the images in cloudinary and hold the response in a variable called `avatar` and `coverImage`.
+- But if the coverLocalPath is empty how we build the logic to upload the cover image in cloudinary. First just initialize the `coverImage` variable with a empty string. And then if there is a cover image local path then only we need to call the `uploadInCludinary` function with help of `coverLocalPath` parameter to upload the cover image in cloudinary and hold the response inside the `coverImage` variable.
+- Now we can create a new user using `User.create()` method with help of `fullname`, `username`, `email`, `password`, `avatar`, `coverImage` parameters. In case of avater we need to set the `avatar` field like `avatar: avatar.url` and in case of cover image we need to set the `coverImage` field like `coverImage: coverImage?.url || "" `. And then we need to hold this newly created user in a variable called `user`.
+- Then to check the user is created or not we need to call `User.findById(user._id)` to find the user and hold it in a variable called `createdUser`. And also we donot need to send the `password` and `refreshToken` field in the response.For doing so we need to use `select()` like `User.findById(user._id).select("-password -refreshToken")`. Include `-` before the field name to exclude the field from the response.
+- Now if the `createdUser` is null then we need to throw an error useing `apiError` class with help of 500 code.
+- Now finally we need to return the response with status of 201 and json data of `createdUser` with help of `apiResponse` class like ` return res.status(201).json(new apiResponse(201, createdUser, "User Created"));`
+- Now while testing or run this route we encounter a error because of `apiError` class. For this first we need to create `NODE_ENV=development` in the `.env` file. Then create a middleware for handleing error in the `middleware` folder as `error.middleware.js`. In this file we need to import mongoose and also `apiError` and then create a middleware function called `errorHandler` with help of `err`, `req`, `res` and `next` as a parameter. Inside the function first we set the `err` in a variable called `error`. Then we need to check if the error is not a instance of ApiError then we need to set a `statusCode` variable with `error.statusCode` or `error instanceof mongoose.Error` then set the code to `400` otherwise `500`. And also we need to set `message` as `error.message` or any hardcoded error message. Also we need to set the error with help of `apiError` class like `error = new apiError(statusCode, message, error?.errors || [], err.stack)` and finally we nedd set the `response` with distructing the erorr like `...error`, `message` with `error.message` and also if we are in developement mode then stack trace should be `stack: error.stack` and if we are in production mode then stack trace should be `{}`. and then return the response with statusCode and json response data like `return res.status(statusCode).json(response);`
+- export the `errorHandler` function. And to work that middleware we need to add the `error.middleware.js` like `app.use(errorHandler)` middleware inside the `app.js` at the end of the file.
+- Now test the `register` route. It may a error because of `cloudinary` to not pick the `api_key` and `api_secret` from the `.env` file. For this we need to import the `dotenv` from `dotenv` package and then use `dotenv.config()` to read the `.env` file with help of path.
+
+## Step 8:
+
+- Now in any case file in cloudinary uploaded successfully but it may not be upload in server. In that case we need to takeing care of this like if there is any error is happening after the cloudinary upload then we need to delete the file from the local folder and cloudinary too.
+- For this first we need to create a async method like `deleteFromCloudinary` with `publicId` parameter.
+- and then we need to wrap up the mothod with try/catch block. In catch block we just log the error with a message. and return null.
+- In the try block we need to call `cloudinary.uploader.destroy(publicId)` with help of `publicId` parameter and hold the response inside a variable called `deletedImage`. 
+- Now we need to export the method.
+- And then in the `user.controller.js` file first we need to to select all code for creating  new user and paste those code inside a try block and in the catch block we need to first log the error and then if the avatar is there we need to call the `deleteFromCloudinary` method with help of `avatar.public_id` parameter. And also if the coverImage is there we need to call the `deleteFromCloudinary` method with help of `coverImage.public_id` parameters. and finally throw the error with help of `apiError` class.

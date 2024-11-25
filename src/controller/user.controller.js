@@ -1,7 +1,10 @@
 import { asyncHandler, asyncHandlerTC } from "../utils/asyncHandler.js";
 import { apiError } from "../utils/apiError.js";
 import { User } from "../models/user.model.js";
-import { uploadInCludinary } from "../utils/cloudinary.js";
+import {
+  uploadInCludinary,
+  deleteFromCloudinary,
+} from "../utils/cloudinary.js";
 import { apiResponse } from "../utils/apiResponse.js";
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
@@ -77,30 +80,46 @@ const registerUser = asyncHandler(async (req, res) => {
   if (!avatar) {
     throw new apiError(400, "avatar must required");
   }
-  //create a user object to create a entry for db
-  const user = await User.create({
-    username: username.toLowerCase(),
-    fullname,
-    email,
-    password,
-    avatar: avatar?.url,
-    coverImage: coverImage?.url || "",
-  });
+  try {
+    //create a user object to create a entry for db
+    const user = await User.create({
+      username: username.toLowerCase(),
+      fullname,
+      email,
+      password,
+      avatar: avatar?.url,
+      coverImage: coverImage?.url || "",
+    });
 
-  //remove the password and refresh token from the response given by db after creation
-  const createdUser = await User.findById(user._id).select(
-    "-password -refreshToken"
-  );
+    //remove the password and refresh token from the response given by db after creation
+    const createdUser = await User.findById(user._id).select(
+      "-password -refreshToken"
+    );
 
-  //check for user creation
-  if (!createdUser) {
-    throw new apiError(500, "Something went wrong while registering the user");
+    //check for user creation
+    if (!createdUser) {
+      throw new apiError(
+        500,
+        "Something went wrong while registering the user"
+      );
+    }
+
+    //return the response
+    return res
+      .status(201)
+      .json(new apiResponse(200, createdUser, "User created successfully"));
+  } catch (error) {
+    console.log(
+      "User creation error :: images not deleted in cloudinary",
+      error
+    );
+    if (avatar) await deleteFromCloudinary(avatar?.public_id);
+    if (coverImage) await deleteFromCloudinary(coverImage?.public_id);
+    throw new apiError(
+      500,
+      "Something went wrong while registering the user and images not deleted in cloudinary"
+    );
   }
-
-  //return the response
-  return res
-    .status(201)
-    .json(new apiResponse(200, createdUser, "User created successfully"));
 });
 
 const loginUser = asyncHandler(async (req, res) => {
