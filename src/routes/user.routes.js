@@ -18,6 +18,7 @@ import { varifyJWT } from "../middleware/auth.middleware.js";
 
 const router = Router();
 
+// Unsecure Routes
 //use upload middleware so that the file are access in the routes
 router.route("/register").post(
   //Use the middlware befor the controller of the route
@@ -36,11 +37,12 @@ router.route("/register").post(
 
 //Route for login the user with help of loginUser controller with a post method
 router.route("/login").post(loginUser);
+router.route("/refresh-token").post(refreshAccessToken);
 
+// Secure Routes
 //below routes are like secure route bcoz these routes need a user already loggedin
 //route for logout the user with help of logout controller with a post method and also add a middleware varifyJWT befor the controller
 router.route("/logout").post(varifyJWT, logoutUser);
-router.route("/refresh-token").post(refreshAccessToken);
 
 router.route("/change-password").post(varifyJWT, changeCurrentPassword);
 router.route("/current-user").get(varifyJWT, getCurrentUser);

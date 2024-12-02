@@ -285,7 +285,7 @@
 - export the `errorHandler` function. And to work that middleware we need to add the `error.middleware.js` like `app.use(errorHandler)` middleware inside the `app.js` at the end of the file.
 - Now test the `register` route. It may a error because of `cloudinary` to not pick the `api_key` and `api_secret` from the `.env` file. For this we need to import the `dotenv` from `dotenv` package and then use `dotenv.config()` to read the `.env` file with help of path.
 
-## Step 8:
+## Step 32:
 
 - Now in any case file in cloudinary uploaded successfully but it may not be upload in server. In that case we need to takeing care of this like if there is any error is happening after the cloudinary upload then we need to delete the file from the local folder and cloudinary too.
 - For this first we need to create a async method like `deleteFromCloudinary` with `publicId` parameter.
@@ -294,7 +294,7 @@
 - Now we need to export the method.
 - And then in the `user.controller.js` file first we need to to select all code for creating new user and paste those code inside a try block and in the catch block we need to first log the error and then if the avatar is there we need to call the `deleteFromCloudinary` method with help of `avatar.public_id` parameter. And also if the coverImage is there we need to call the `deleteFromCloudinary` method with help of `coverImage.public_id` parameters. and finally throw the error with help of `apiError` class.
 
-## Step 9:
+## Step 33:
 
 - Now we need to set up the login user function in the `user.controller.js` file.
 - But before that we need to create a async method like `generateAccessAndRefreshToken` with `userId` parameter.
@@ -322,7 +322,7 @@
 
 - Access token are short lived and refresh token are long lived. Whenever a user authenticate with credatials then the server issue an access token and refresh token.And then the user or client uses the access token to access the protected routes or API. When the access token expires, the client send the refresh token to the server and then server validate the refresh token and issue a new access token.
 
-# Step 10:
+## Step 34:
 
 - Refresh the access token for generating a new access token we need to create a async method like `refreshAccessToken` with help of `asyncHandler` and `req` and `res` parameters in user.controller.js.
 - First the logic is whenever the access token is expire then the client go to a specific route where the client send the refresh token to the server. For doing so first grab the refresh token from body or from cookies and hold it in a variable called `newRefreshToken` like `const newRefreshToken = req.cookies.refreshToken || req.body.refreshToken;`
@@ -338,7 +338,7 @@
 - In the catch block we need to throw an error of 500 with help of `apiError` class.
 - Finally export the `refreshAccessToken` function.
 
-# Step 11:
+## Step 35:
 
 - Now we need a method like `logoutUser` in the `user.controller.js` file with help of `asyncHandler` and `req` and `res` parameters.
 - Now the main part is for logout a specific user we need to get the id of the user but we cannot get the id from the request body. For doing so we need a middleware. So create a middleware like `auth.middleware.js` in the `middleware` folder.
@@ -360,7 +360,7 @@
 - Now to perform the logout we need to use `logoutUser` function in the `user.routes.js` file. Where first we need to import the `verifyJWT` middleware and also the `logoutUser` function.
 - Now we know then the logout route is secure route, mean to say the user need to be authenticated to perform the logout. So for that we neeed to first use the `verifyJWT` middleware and then use the `logoutUser` function like `router.route("/logout").post(verifyJWT, logoutUser);`
 
-# Step 12:
+## Step 36:
 
 - Now we need to create some controller for doing CRUD operation in the `user.controller.js` file. For that first we need to just initialize or declare the controller like `changeCurrentPassword`, `getCurrentUser`, `updateAccountDetails`, `updateUserAvatar`, `updateUserCoverImage` as a boilerplate.
 - Now lets build the `changeCurrentPassword` controller.
@@ -405,7 +405,7 @@
 
 - The aggregation pipeline is a powerful feature in MongoDB, used for processing and transforming collections of documents into aggregated results. It allows you to perform complex data transformations and computations on data stored in MongoDB collections using a series of stages.
 
-# Step 13:
+## Step 37:
 
 - We need to aggregation pipeline in `getUserChannelProfile` function in the `user.controller.js` file.
 - First we need to grab the username from the url and based on that we can find the user. For this we can use `req.params` like `const { username } = req.params;`
@@ -421,10 +421,27 @@
 - If the channel is empty or so to say length is 0 like `!channel?.length` then throw an error using `apiError` class.
 - Now return the response with status of 200 and json data of `channel` with help of `apiResponse` class like `return res.status(200).json(new apiResponse(200, channel[0], "Channel Profile fetched successfully"));`
 
-# Step 14:
+## Step 38:
 
 - Now we need to create a `getWatchHistory` function in the `user.controller.js` file to fetch all the watch history of the user with help of aggregation pipeline by use `aggregate` method from the `user` model and pass the pipeline like `const watchHistory = await User.aggregate([{pipeline}]);`
 - In the first stage we need to use `$match` operator to filter the watch history by matching the user id with help of `new mongoose.Types.ObjectId(req.user?.id)` ( We cannot directly use `req.user?.id` in aggregation pipeline) like `$match: { _id: new mongoose.Types.ObjectId(req.user?.id) }`.
 - In the second stage we need to use `$lookup` from the `videos` model where the `localField` is `watchHistory` and `foreignField` is `_id` and called it `as` `watchHistory`. After that we can also inject a pipeline inside this stage so that we can filter the watch history with help of `pipeline` as `pipeline: [{stages}]`. For doing this first we need to set first stage which is a `$lookup`. Where `from` is `users` model and `localField` is `owner` and `foreignField` is `_id` and called it `as` `owner`. And then inside the lookup we need another `pipeline` where we need to use `$project` operator and set field like `fullname`, `username` and `avatar` to 1. After that we also use another pipeline inside the first `lookup` we need to use `$addfields` operator to set `owner` field to first element of the owner line `owner:  { $first: "$owner" } `
 - Then hold the filtered data in a variable called `user`
 - And finally return the response with status of 200 and json data of `watchHistory` from the `user` with help of `apiResponse` class like `return res.status(200).json(new apiResponse(200, user[0]?.watchHistory, "Watch history fetched successfully"));`
+
+## Step 39:
+
+- Now let sort all routes in two categories, one is Secure route and another is Unsecure route.
+- In Unsecure route anyone can access so we don't need to use `varifyJWT` middleware.
+- In Secure route we need to use `varifyJWT` middleware.
+- In Unsecure route we need to declare routes like `register`, `login` and `refresh-token` in `user.routes.js` file.
+- In sucure route we need to declare routes like `logout`, `change-password`, `current-user`, `update-account`, `update-avatar`, `update-cover-image` in `user.routes.js` file.
+- Set up the route for `getUserChannelProfile` we need to declare the route like `router.route("/c/:username").get(varifyJWT, getUserChannelProfile)` in `user.routes.js` file. Here `/c/` represent the channel(It could be anything c or channel) and then `username` is a dynamic parameter which is declared same as in the `getUserChannelProfile` function in `user.controller.js` file.
+- Set up the route for `getUserWatchHistory` we need to declare the route like `router.route("/history").get(varifyJWT, getUserWatchHistory)` in `user.routes.js` file.
+- In `update-account` route we need to declare the route like `router.route("/update-account").patch(varifyJWT, updateAccountDetails)` in `user.routes.js` file. Here we use `patch` method to update the account details. `patch` method is used to update the data partially.
+- In `update-avatar` route we need to declare the route like `router.route("/update-avatar").patch(varifyJWT, upload.single("avatar"), updateUserAvatar)` in `user.routes.js` file. Here we use `patch` method to update the avatar. `patch` method is used to update the data partially. And we use `upload` middleware to upload the file. And we use `updateUserAvatar` function to update the avatar.
+-  In `update-cover-image` route we need to declare the route like `router.route("/update-cover-image").patch(varifyJWT, upload.single("coverImage"), updateUserAvatar)` in `user.routes.js` file. Here we use `patch` method to update the cover-image. `patch` method is used to update the data partially. And we use `upload` middleware to upload the file. And we use `updateUserAvatar` function to update the cover-image.
+
+## Step 40:
+
+- Now lets test all route in Postman.
