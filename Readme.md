@@ -290,6 +290,141 @@
 - Now in any case file in cloudinary uploaded successfully but it may not be upload in server. In that case we need to takeing care of this like if there is any error is happening after the cloudinary upload then we need to delete the file from the local folder and cloudinary too.
 - For this first we need to create a async method like `deleteFromCloudinary` with `publicId` parameter.
 - and then we need to wrap up the mothod with try/catch block. In catch block we just log the error with a message. and return null.
-- In the try block we need to call `cloudinary.uploader.destroy(publicId)` with help of `publicId` parameter and hold the response inside a variable called `deletedImage`. 
+- In the try block we need to call `cloudinary.uploader.destroy(publicId)` with help of `publicId` parameter and hold the response inside a variable called `deletedImage`.
 - Now we need to export the method.
-- And then in the `user.controller.js` file first we need to to select all code for creating  new user and paste those code inside a try block and in the catch block we need to first log the error and then if the avatar is there we need to call the `deleteFromCloudinary` method with help of `avatar.public_id` parameter. And also if the coverImage is there we need to call the `deleteFromCloudinary` method with help of `coverImage.public_id` parameters. and finally throw the error with help of `apiError` class.
+- And then in the `user.controller.js` file first we need to to select all code for creating new user and paste those code inside a try block and in the catch block we need to first log the error and then if the avatar is there we need to call the `deleteFromCloudinary` method with help of `avatar.public_id` parameter. And also if the coverImage is there we need to call the `deleteFromCloudinary` method with help of `coverImage.public_id` parameters. and finally throw the error with help of `apiError` class.
+
+## Step 9:
+
+- Now we need to set up the login user function in the `user.controller.js` file.
+- But before that we need to create a async method like `generateAccessAndRefreshToken` with `userId` parameter.
+- Inside the method first we need a try/catch block. In the try block we need to find the user with help of `await User.findById(userId)` and hold the user in a variable called `user`.
+- If the user not found then throw an error useing `apiError` class.
+- Now we need to generate the access token with help of the `generateAccessToken` method mentioned in the user model like `await user.generateAccessToken()`. and hold the access token in a variable called `accessToken`.
+- Then we also need to generate the refresh token with help of the `generateRefreshToken` method mentioned in the user model like `await user.generateRefreshToken()`. and hold the refresh token in a variable called `refreshToken`.
+- Now we need to set the `refreshToken` inside the user object like `user.refreshToken = refreshToken`. and then save the user with help of `await user.save()` like ` await user.save({ validateBeforeSave: false });`.
+- Now we need to return the access token and refresh token.
+- Then in the catch block we need to log the error and also use apiError.
+- Now we need to work in the `loginUser` function in the `user.controller.js` file.
+- In the function first we need to get the data like email, username and password from the request body like `const { email, username, password } = req.body;`
+- Then we need some validation like if the email field is empty then throw an error using `apiError` class.
+- Now check is there any user is already exist with help of `await User.findOne({ $or: [{ email }, { username }] })` and hold the user in a variable called `user`.
+- If the user not found then throw an error using `apiError` class.
+- Now if the user found then compare the password with help of `await user.isPasswordCorrect(password)` and hold the result in a variable called `isPasswordValid`.
+- If the password is not valid then throw an error using `apiError` class.
+- Now we need to generate the access token and refresh token with help of `generateAccessAndRefreshToken` and destructure the result with accessToken and refreshToken like `const { accessToken, refreshToken } = await generateAccessAndRefreshToken(user._id);`
+- Now we again find the user with help of `user._id` and also deselect some field like `password` and `refreshToken` with help of `select("-password -refreshToken")` and hold the user in a variable called `loggedInUser` so that we can send the user in the response.
+- After that we also need to set some `options` like `httpOnly: true` to prevent the client to access the cookie. and `secure` set to `process.env.NODE_ENV !== "development"` to prevent the client to access the cookie in development environment.
+- return the response, first set the status to 200, then set the cookie with help of `.cookie("accessToken", accessToken, options)` and also set the cookie with help of `.cookie("refreshToken", refreshToken, options)` and finally send the response with help of `apiResponse` class with help of `loggedInUser`.
+- Finally export the `loginUser` function.
+
+# Access and Refresh Token :
+
+- Access token are short lived and refresh token are long lived. Whenever a user authenticate with credatials then the server issue an access token and refresh token.And then the user or client uses the access token to access the protected routes or API. When the access token expires, the client send the refresh token to the server and then server validate the refresh token and issue a new access token.
+
+# Step 10:
+
+- Refresh the access token for generating a new access token we need to create a async method like `refreshAccessToken` with help of `asyncHandler` and `req` and `res` parameters in user.controller.js.
+- First the logic is whenever the access token is expire then the client go to a specific route where the client send the refresh token to the server. For doing so first grab the refresh token from body or from cookies and hold it in a variable called `newRefreshToken` like `const newRefreshToken = req.cookies.refreshToken || req.body.refreshToken;`
+- Now check if the refresh token is not found then throw an error using `apiError` class.
+- Now first we need to import `jwt` from `jsonwebtoken` package.
+- Now if the refresh token is found then first we need a try/catch block. In the try block we need to verify the refresh token with help of `jwt.verify(newRefreshToken, process.env.JWT_REFRESH_TOKEN_SECRET)` and hold the result in a variable called `decoded`.
+- Inside the `decoded` token we have a `_id` field and with help this we can find the user with help of `await User.findById(decoded?._id)` and hold the user in a variable called `user`.
+- If the user not found then throw an error using `apiError` class.
+- Now we need to check the refresh token is same as the refresh token of the user. if the refresh token is not same then throw an error using `apiError` class like `if (newRefreshToken !== user?.refreshToken) {//apiError}`.
+- Now we need to generate the access token so for that first set the `options` like `httpOnly` and `secure` like `const options = { httpOnly: true, secure: process.env.NODE_ENV !== "development" };`
+- and finally generate the access token with help of `generateAccessAndRefreshToken` and destructure the result with accessToken and refreshToken like `const { accessToken, refreshToken: newRefreshToken } = await generateAccessAndRefreshToken(user._id);`
+- Now we need to return the response with status of 200, cookie with help of `.cookie("accessToken", accessToken, options)` and `.cookie("refreshToken", newRefreshToken, options)` and finally send the response in json with help of `apiResponse` class with help of accessToken and refreshToken like ` new apiResponse(200, { accessToken, refreshToken: newRefreshToken }, "Access token refreshed successfully").`
+- In the catch block we need to throw an error of 500 with help of `apiError` class.
+- Finally export the `refreshAccessToken` function.
+
+# Step 11:
+
+- Now we need a method like `logoutUser` in the `user.controller.js` file with help of `asyncHandler` and `req` and `res` parameters.
+- Now the main part is for logout a specific user we need to get the id of the user but we cannot get the id from the request body. For doing so we need a middleware. So create a middleware like `auth.middleware.js` in the `middleware` folder.
+- In the middleware first we need to import `jwt`, `User`, `apiError` and `asyncHandler`.
+- Then create a method like `verifyJWT` with help of `asyncHandler` and `req`, `next` as a parameters.
+- First we need to grab the refresh token from body or from cookies and hold it in a variable called `token` like `const token = req.cookies.accessToken || req.header("Authorization")?.replace("Bearer ", "");`(In case of web it is ok to use req.cookies.accessToken but in case of api we need to use req.header("Authorization")?.replace("Bearer ", "");)
+- If the token is not found then throw an error using `apiError` class.
+- Now we need a try/catch block, In the try block we need to verify the token with help of `jwt.verify(token, process.env.JWT_ACCESS_TOKEN_SECRET)` and hold the result in a variable called `decoded`.
+- Inside the `decoded` token we have a `_id` field and with help this we can find the user with help of `await User.findById(decoded?._id).select("-refreshToken -password")` and hold the user in a variable called `user`.
+- If the user not found then throw an error using `apiError` class.
+- Now we need to set the user object in the request with help of `req.user = user;` so that we can get the user information from the middleware.
+- Now forward the request to the next middleware by useing `next();`
+- In the catch block we need to throw an error of 401 with help of `apiError` class like `throw new apiError(401, error?.message || "Invalid token");`.
+- Now handle the `logoutUser` function in the `user.controller.js` file.
+- Now we can await and run the `findByIdAndUpdate` in the `User` model with help of `req.user._id` and set the `refreshToken` to `undefined`(We also use "", null so it will be decided by the database which one to use) and also set the `new` to true like `await User.findByIdAndUpdate(req.user._id, {$set: {refreshToken: undefined}}, {new: true});`
+- Then set the 'options`like`httpOnly: true`to prevent the client to access the cookie and`secure`set to`process.env.NODE_ENV !== "development"` to prevent the client to access the cookie in development environment.
+- And then return the response with status of 200 and clear the cookie with help of `.clearCookie("accessToken", options)` and `.clearCookie("refreshToken", options)` and send a json response with help of apiResponse as 200 and with empty data and a message.
+- Finally export the `logoutUser` function.
+- Now to perform the logout we need to use `logoutUser` function in the `user.routes.js` file. Where first we need to import the `verifyJWT` middleware and also the `logoutUser` function.
+- Now we know then the logout route is secure route, mean to say the user need to be authenticated to perform the logout. So for that we neeed to first use the `verifyJWT` middleware and then use the `logoutUser` function like `router.route("/logout").post(verifyJWT, logoutUser);`
+
+# Step 12:
+
+- Now we need to create some controller for doing CRUD operation in the `user.controller.js` file. For that first we need to just initialize or declare the controller like `changeCurrentPassword`, `getCurrentUser`, `updateAccountDetails`, `updateUserAvatar`, `updateUserCoverImage` as a boilerplate.
+- Now lets build the `changeCurrentPassword` controller.
+- First we need to grab the current password and new password from the request body like `const { currentPassword, newPassword } = req.body;`
+- Now find the user with the help of `user._id` and hold it in a variable called `user` like `const user = await User.findById(req.user._id);`
+- Now compare the current password with help of `await user.isPasswordCorrect(currentPassword)` and hold the result in a variable called `isPasswordValid`.
+- If the password is not valid then throw an error using `apiError` class.
+- Now set the password with the help of `user.password = newPassword` and then save the user with help of `await user.save({ validateBeforeSave: false });`
+- Now return the response with status of 200 and send a json response with help of apiResponse as 200 and with empty data and a message.
+
+- Now lets build the `getCurrentUser` controller.
+- Its the simple controller to build because we have already done all the work in the `verifyJWT` middleware and get the user information in the `req.user` object.
+- Now return the response with status of 200 and send a json response with help of apiResponse as 200 and with the user data (req.user) and a message.
+
+- Now lets build the `updateAccountDetails` controller.
+- Now we need to grab the fullname, email (or what data you want to update) from the request body like `const { fullname, email } = req.body;`
+- Then if the email and fullname is empty then throw an error using `apiError` class.
+- Now find the user useing `findByIdAndUpdate` method with help of `user._id` and set the `fullname` and `email` and also set `new` to true like `await User.findByIdAndUpdate(user._id, { $set: { fullname, email } }, { new: true });`
+- After that we need to delselect the password and refreshToken from the user object with help of `select("-password -refreshToken")` and hold it in a variable called `user`.
+- Now return the response with status of 200 and send a json response with help of apiResponse as 200 and with the user data and a message.
+
+- Now lets build the `updateUserAvatar` controller.
+- Now we need to grab the avatar from the request file like `req.file?.path` and hold it in a variable called `avatarLocalPath`.
+- if the avatarLocalPath is empty then throw an error using `apiError` class.
+- Now to upload the image in cloudinary we need to call the `uploadInCludinary` function with help of `avatarLocalPath` parameter to upload the image in cloudinary and hold the response in a variable called `avatar`.
+- Then if the avatar is empty then throw an error using `apiError` class.
+- Now find and update the user with the help of `req.user?._id` and set the `avatar` with `avatar.url` field like `await User.findByIdAndUpdate(user._id, { $set: { avatar: avatar.url } }, { new: true });`
+- and then delselect the password and refreshToken from the user object with help of `select("-password -refreshToken")` and hold it in a variable called `user`.
+- Now return the response with status of 200 and send a json response with help of apiResponse as 200 and with the user data and a message.
+
+- Now lets build the `updateUserCoverImage` controller.
+- Now we need to grab the coverImage from the request file like `req.file?.path` and hold it in a variable called `coverLocalPath`.
+- if the coverLocalPath is empty then throw an error using `apiError` class.
+- Now to upload the image in cloudinary we need to call the `uploadInCludinary` function with help of `coverLocalPath` parameter to upload the image in cloudinary and hold the response in a variable called `coverImage`.
+- Then if the coverImage is empty then throw an error using `apiError` class.
+- Now find and update the user with the help of `req.user?._id` and set the `coverImage` with `coverImage.url` field like `await User.findByIdAndUpdate(user._id, { $set: { coverImage: coverImage.url } }, { new: true });`
+- and then delselect the password and refreshToken from the user object with help of `select("-password -refreshToken")` and hold it in a variable called `user`.
+- Now return the response with status of 200 and send a json response with help of apiResponse as 200 and with the user data and a message.
+- Finally export the `changeCurrentPassword`, `getCurrentUser`, `updateAccountDetails`, `updateUserAvatar`, `updateUserCoverImage` functions.
+
+# Aggregation Pipeline
+
+- The aggregation pipeline is a powerful feature in MongoDB, used for processing and transforming collections of documents into aggregated results. It allows you to perform complex data transformations and computations on data stored in MongoDB collections using a series of stages.
+
+# Step 13:
+
+- We need to aggregation pipeline in `getUserChannelProfile` function in the `user.controller.js` file.
+- First we need to grab the username from the url and based on that we can find the user. For this we can use `req.params` like `const { username } = req.params;`
+- Now if there is not username inside the params then throw an error using `apiError` class.
+- Now we need to use the aggrigation pipeline to find the channel profile of the user. For doing so we need to filter the user by useing stages of the aggregation pipeline.
+- First statge we need to match the username with help of the username inside the params and change it into lowercase for better matching like `{ $match: { username: username?.toLowerCase() } }`. So that the matching username will only be filtered from the user collection.
+- Second stage we need to `lookup` from `subscriptions` model where the `localField` is `_id` becoz we need to match it with the `foreignField` which is `channel` field from the `subscriptions` model and `as` is `subscribers` because we need to called these user as `subscriber` and also we get all the subscriber data because of this stage.
+- In the next stage where we want to grab all the subscribed list which the user acctally subscribed. For getting this we need to use `lookup` again which lookup `from` the `subscriptions` model and `localField` is `_id` and `foreignField` is `subscriber` and then we need to called it `as` `subscriberedTo`.
+- In the next stage we need to add some field by useing `$addFields` and set the `subscriberCount` field with the length of the `subscribers` field which we create in second stage like `$addFields: { subscriberCount: { $size: "$subscribers" } }`. We use `$` before the field name because we create it on second stage. And also we need add another field called `channelsSubscribedToCount` which is the length of the `subscriberedTo` field with help of `size` operator like `$addFields: { channelsSubscribedToCount: { $size: "$subscriberedTo" } }`.
+- Now we also need to add a `isSubscribed` field where we can find if a user is in the subscriber list of the current user then this field set to true otherwise set to false. For these we use a condition with help of `$cond` operator where we need to set the `if` with help of `$in` like in the current user or so to say `req.user?.id` a field called `$subscribers.subscriber` is present then in the `then` part we set the `isSubscribed` field to true and in the `else` part we set the `isSubscribed` field to false like `$cond: { if: { $in: [req.user?.id, "$subscribers.subscriber"] }, then: true, else: false }`.
+- Finally in the last stage or pipeline we need to `project` all the required field like `username`, `fullname`, `email`, `avatar`, `subscriberCount`, `channelsSubscribedToCount`, `isSubscribed`, `coverImage`by setting then with `1` like `$project: { username: 1, fullname: 1, email: 1, avatar: 1, subscriberCount: 1, channelsSubscribedToCount: 1, isSubscribed: 1, coverImage: 1 }`.
+- And finally the filtered data getting from the pipeline hold in a variable called `channel`.
+- If the channel is empty or so to say length is 0 like `!channel?.length` then throw an error using `apiError` class.
+- Now return the response with status of 200 and json data of `channel` with help of `apiResponse` class like `return res.status(200).json(new apiResponse(200, channel[0], "Channel Profile fetched successfully"));`
+
+# Step 14:
+
+- Now we need to create a `getWatchHistory` function in the `user.controller.js` file to fetch all the watch history of the user with help of aggregation pipeline by use `aggregate` method from the `user` model and pass the pipeline like `const watchHistory = await User.aggregate([{pipeline}]);`
+- In the first stage we need to use `$match` operator to filter the watch history by matching the user id with help of `new mongoose.Types.ObjectId(req.user?.id)` ( We cannot directly use `req.user?.id` in aggregation pipeline) like `$match: { _id: new mongoose.Types.ObjectId(req.user?.id) }`.
+- In the second stage we need to use `$lookup` from the `videos` model where the `localField` is `watchHistory` and `foreignField` is `_id` and called it `as` `watchHistory`. After that we can also inject a pipeline inside this stage so that we can filter the watch history with help of `pipeline` as `pipeline: [{stages}]`. For doing this first we need to set first stage which is a `$lookup`. Where `from` is `users` model and `localField` is `owner` and `foreignField` is `_id` and called it `as` `owner`. And then inside the lookup we need another `pipeline` where we need to use `$project` operator and set field like `fullname`, `username` and `avatar` to 1. After that we also use another pipeline inside the first `lookup` we need to use `$addfields` operator to set `owner` field to first element of the owner line `owner:  { $first: "$owner" } `
+- Then hold the filtered data in a variable called `user`
+- And finally return the response with status of 200 and json data of `watchHistory` from the `user` with help of `apiResponse` class like `return res.status(200).json(new apiResponse(200, user[0]?.watchHistory, "Watch history fetched successfully"));`
