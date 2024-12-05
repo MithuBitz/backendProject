@@ -440,8 +440,10 @@
 - Set up the route for `getUserWatchHistory` we need to declare the route like `router.route("/history").get(varifyJWT, getUserWatchHistory)` in `user.routes.js` file.
 - In `update-account` route we need to declare the route like `router.route("/update-account").patch(varifyJWT, updateAccountDetails)` in `user.routes.js` file. Here we use `patch` method to update the account details. `patch` method is used to update the data partially.
 - In `update-avatar` route we need to declare the route like `router.route("/update-avatar").patch(varifyJWT, upload.single("avatar"), updateUserAvatar)` in `user.routes.js` file. Here we use `patch` method to update the avatar. `patch` method is used to update the data partially. And we use `upload` middleware to upload the file. And we use `updateUserAvatar` function to update the avatar.
--  In `update-cover-image` route we need to declare the route like `router.route("/update-cover-image").patch(varifyJWT, upload.single("coverImage"), updateUserAvatar)` in `user.routes.js` file. Here we use `patch` method to update the cover-image. `patch` method is used to update the data partially. And we use `upload` middleware to upload the file. And we use `updateUserAvatar` function to update the cover-image.
+- In `update-cover-image` route we need to declare the route like `router.route("/update-cover-image").patch(varifyJWT, upload.single("coverImage"), updateUserAvatar)` in `user.routes.js` file. Here we use `patch` method to update the cover-image. `patch` method is used to update the data partially. And we use `upload` middleware to upload the file. And we use `updateUserAvatar` function to update the cover-image.
 
 ## Step 40:
 
 - Now lets test all route in Postman.
+
+# To know more about MongoDB aggregation pipeline [Click Here](./doc/Mongo-aggregation.md)
